@@ -15,7 +15,7 @@ class Solution {
                 int step = cur & -cur;
                 while (step>range) step/=2;
                 int leadingZeros = power_of_2(step);
-                result.push_back(ipStr(cur, leadingZeros-1));
+                result.push_back(ipStr(cur, leadingZeros));
                 range -= step;
                 cur += step;
             }
@@ -24,7 +24,7 @@ class Solution {
         }
 
         int power_of_2(int n){
-            int res = 0;
+            int res = -1;
             while(n>0){
                 n/=2;
                 res++;
