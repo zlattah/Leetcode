@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <vector>
+using namespace std;
 #define MAX_CHAR 256
  
 struct SuffixTreeNode {
@@ -313,25 +315,85 @@ void buildSuffixTree()
     setSuffixIndexByDFS(root, labelHeight);
 }
 
-void doTraversal(Node *n, int labelHeight, int* maxHeight, int* substringStartIndex){
-    if(n == NULL){
+// ...existing code...
+// Collect all leaf suffix indices under node n
+void collectSuffixIndices(Node* n, vector<int>& indices) {
+    if (!n) return;
+    if (n->suffixIndex > -1) {
+        indices.push_back(n->suffixIndex);
         return;
     }
+    for (int i = 0; i < MAX_CHAR; ++i) {
+        if (n->children[i] != NULL)
+            collectSuffixIndices(n->children[i], indices);
+    }
+}
+
+// Original traversal for longest repeated substring (kept for other use)
+void doTraversal(Node *n, int labelHeight, int* maxHeight, int* substringStartIndex){
+    if(n == NULL) return;
     int i=0;
-    if(n->suffixIndex == -1){ //If it is internal node
+    if(n->suffixIndex == -1){ // internal node
         for (i = 0; i < MAX_CHAR; i++){
             if(n->children[i] != NULL){
-                doTraversal(n->children[i], labelHeight +
-                                edgeLength(n->children[i]), maxHeight,
-                                 substringStartIndex);
+                doTraversal(n->children[i], labelHeight + edgeLength(n->children[i]), maxHeight, substringStartIndex);
             }
         }
-    }
-    else if(n->suffixIndex > -1 && (*maxHeight < labelHeight - edgeLength(n))){
+    } else if(n->suffixIndex > -1 && (*maxHeight < labelHeight - edgeLength(n))){
         *maxHeight = labelHeight - edgeLength(n);
         *substringStartIndex = n->suffixIndex;
     }
 }
+
+// New traversal that finds the longest repeated non-overlapping substring
+void doTraversalNonOverlap(Node *n, int labelHeight, int* maxHeight, int* substringStartIndex){
+    if (n == NULL) return;
+
+    // If internal node, check its subtree for repeated non-overlapping occurrences
+    if (n->suffixIndex == -1) {
+        // Collect all suffix starts under this node
+        vector<int> indices;
+        collectSuffixIndices(n, indices);
+        if (indices.size() >= 2 && labelHeight > 0) {
+            sort(indices.begin(), indices.end());
+            // Check consecutive differences for non-overlapping occurrences
+            for (size_t k = 1; k < indices.size(); ++k) {
+                if (indices[k] - indices[k-1] >= labelHeight) {
+                    // Found non-overlapping repeat of length labelHeight
+                    if (labelHeight > *maxHeight) {
+                        *maxHeight = labelHeight;
+                        *substringStartIndex = indices[k-1]; // choose earlier occurrence
+                    }
+                    break; // this node is satisfied, no need to check other pairs here
+                }
+            }
+        }
+        // Recurse to children
+        for (int i = 0; i < MAX_CHAR; ++i) {
+            if (n->children[i] != NULL)
+                doTraversalNonOverlap(n->children[i], labelHeight + edgeLength(n->children[i]), maxHeight, substringStartIndex);
+        }
+    } else {
+        // leaf: nothing to do here for internal-node-based repeats
+        return;
+    }
+}
+
+void getLongestNonOverlappingRepeatedSubstring()
+{
+    int maxHeight = 0;
+    int substringStartIndex = 0;
+    doTraversalNonOverlap(root, 0, &maxHeight, &substringStartIndex);
+    printf("Longest Non-Overlapping Repeated Substring in %s is: ", text);
+    if (maxHeight > 0) {
+        for (int k = 0; k < maxHeight; ++k)
+            printf("%c", text[k + substringStartIndex]);
+    } else {
+        printf("No repeated non-overlapping substring");
+    }
+    printf("\n");
+}
+// ...existing code...
 
 void getLongestRepeatedSubstring()
 {
@@ -347,10 +409,6 @@ void getLongestRepeatedSubstring()
     if(k == 0)
         printf("No repeated substring");
     printf("\n");
-}
-void getLongestNonOverlappingRepeatedSubstring()
-{
-
 }
 // driver program to test above functions
 int main(int argc, char *argv[])
